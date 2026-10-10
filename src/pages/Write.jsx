@@ -1,8 +1,51 @@
 import { useState, useEffect } from "react"
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 function Write(){
   const [text, setText] = useState("");
   const [text2, setText2] = useState("");
+
+  const navigate = useNavigate();
+
+const handlePublish = async () => {
+    try {
+        const token = localStorage.getItem("accessToken");
+
+        const response = await fetch(
+            "https://backendblog-1kjf.onrender.com/medium/content/posts/",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    title: text,
+                    content: text2
+                })
+            }
+        );
+
+        const data = await response.json();
+
+        console.log("PUBLISH RESPONSE:", data);
+
+        if (response.ok) {
+            alert("Post published successfully!");
+            setText("");
+            setText2("");
+            navigate("/profiles");
+        } else {
+            alert(data.message || "Failed to publish post.");
+        }
+    } catch (error) {
+        console.error("Publish error:", error);
+    }
+};
+
+
+
+
+
 
   const handleChange = (e) => {
     setText(e.target.value);
@@ -26,7 +69,7 @@ function Write(){
                         </div>
 
                         <div className="flex items-center">
-                            <button className="w-20 h-6 mr-5  text-center  px-1 bg-green-400 rounded-full text-white publish font-semibold cursor-pointer">Publish</button>
+                            <button  onClick={handlePublish} className={`w-20 h-6 mr-5  text-center  px-1 bg-green-400/30 rounded-full text-white  font-semibold cursor-pointer transition-all duration-300 ${text.trim() || text2.trim() ? "bg-green-700" : "bg-green-400/30"}`}>Publish</button>
                             <img src="/menu-dots.png" alt="" className="size-7 cursor-pointer mr-5" />
                             <img src="/bell.png" alt="" className="size-5 cursor-pointer mr-5" />
                             <div className="rounded-full size-10 border"></div>

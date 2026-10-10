@@ -86,9 +86,7 @@
 
 
 /* write  */
-.publish{
-    background: rgba(26, 137, 23, .25);
-}
+
 .post-topic{
         font-family: medium-content-title-font, Georgia, Cambria, "Times New Roman", Times, serif;
         text-transform: none;
@@ -97,16 +95,4 @@
 
 
 
-/* loader  */
-.loader-text{
-    animation: appear 1.5s infinite;
-}
 
-@keyframes appear{
-    0% 100%{
-        opacity: 0;
-    }
-    50%{
-        opacity: 1;
-    }
-}

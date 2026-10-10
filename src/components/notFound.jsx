@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from "react";
 
 
 
-function Landing_page() {
+function notFound() {
     
     return (
         <div>
@@ -94,11 +94,11 @@ function Landing_page() {
                     <p className="text-center  page_not_found_code text-gray-500">404</p>
                     <p className="text-center text-3xl font-semibold">Out of nothing, something.</p>
                     <p className="text-center mt-2 text-xl text-gray-500">You can find (just about) anything on Medium — apparently even a page that doesn’t <br /> exist. Maybe these stories will take you somewhere new?</p>
-                    <Link to="/landing_page"><p className="text-center underline capitalize text-lg mt-3 text-gray-500">home</p></Link>
+                    <Link to="/landingpage"><p className="text-center underline capitalize text-lg mt-3 text-gray-500">home</p></Link>
                     
                 </div>
             </div>
         </div>
     )
 };
-export default Landing_page;
+export default notFound;
