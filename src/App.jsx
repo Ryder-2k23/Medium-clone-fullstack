@@ -11,6 +11,7 @@ import LandingPage from "./pages/LandingPage"
 import  Profiles  from './pages/Profiles';
 import SinglePost from './pages/SinglePost';
 import Write from './pages/Write';
+import AdminLog from './pages/AdminLog';
 
 
 function App() {
@@ -23,6 +24,8 @@ function App() {
          <Route path='/profiles' element = {<Profiles/>}/>
          <Route path='/singlepost/:postId' element = {<SinglePost/>}/>
          <Route path ='/write' element = {<Write/>}/>
+
+         <Route path='/adminlog' element = {<AdminLog/>}/>
          
           <Route path="*" element={<NotFound />} />
       </Routes>

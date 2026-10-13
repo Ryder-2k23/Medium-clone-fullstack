@@ -1,4 +1,4 @@
-import { Link, useParams } from "react-router-dom";
+import { Link,useNavigate, useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 function SinglePost() {
     const [openClapModal, setOpenClapModal] = useState(false);
@@ -6,15 +6,35 @@ function SinglePost() {
     const [sideNavOpen, setSideNavOpen] = useState(true);
     const [activeNav, setActiveNav] = useState(0);
 
+
     const { postId } = useParams();
     const [post, setPost] = useState(null);
+    const [posts, setPosts] = useState([]);
+    
+const [authorPosts, setAuthorPosts] = useState([]);
+
     const [user, setUser] = useState(null);
     const [authors, setAuthors] = useState({});
+    const [comments, setComments] = useState([]);
+    const [commentText, setCommentText] = useState("");
+
+
+    const [replyingTo, setReplyingTo] = useState(null);
+    const [replyText, setReplyText] = useState("");
+
+
+
     const [formData, setFormData] = useState({ first_name: "", last_name: "", pronoun: "", bio: "" });
 
     const userId = localStorage.getItem("userId");
 
+const navigate = useNavigate();
+    const signOut = async ()=>{
+        localStorage.removeItem("accessToken");
+localStorage.removeItem("userId");
 
+navigate("/");
+    }
     const handleClap = async () => {
         try {
             const token = localStorage.getItem("accessToken");
@@ -23,9 +43,9 @@ function SinglePost() {
                 {
                     method: "POST",
                     headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
-                }
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`
+                    }
                 },
             );
 
@@ -41,6 +61,131 @@ function SinglePost() {
             console.error("Error clapping post:", error);
         }
     };
+
+    const handleComment = async () => {
+        if (!commentText.trim()) {
+            alert("Please write a comment first");
+            return;
+        }
+
+        try {
+            const token = localStorage.getItem("accessToken");
+
+            const response = await fetch(
+                `https://backendblog-1kjf.onrender.com/medium/comment/${postId}`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        content: commentText
+                    })
+                }
+            );
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || "Failed to post comment");
+            }
+
+            setCommentText("");
+            await getPostComments();
+            alert("Comment posted successfully!");
+
+        } catch (error) {
+            console.error("Error posting comment:", error);
+            alert(error.message);
+        }
+    };
+
+
+    const handleReply = async (commentId) => {
+    if (!replyText.trim()) {
+        alert("Please write a reply first");
+        return;
+    }
+
+    try {
+        const token = localStorage.getItem("accessToken");
+
+        const response = await fetch(
+            `https://backendblog-1kjf.onrender.com/medium/comment/${postId}`,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    content: replyText,
+                    replyTo: commentId
+                })
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.message || "Failed to send reply");
+        }
+
+        setReplyText("");
+        setReplyingTo(null);
+        await getPostComments();
+
+        alert("Reply posted successfully!");
+    } catch (error) {
+        console.error("Error posting reply:", error);
+        alert(error.message);
+    }
+};
+
+
+    const getPostComments = async () => {
+        try {
+            const response = await fetch(
+                `https://backendblog-1kjf.onrender.com/medium/comment/comments/${postId}`
+            );
+
+            const data = await response.json();
+            console.log("POST COMMENTS:", data.data);
+
+            if (response.ok) {
+                setComments(data.data || []);
+            } else {
+                console.error("Failed to fetch comments:", data.message);
+            }
+        } catch (error) {
+            console.error("Error fetching comments:", error);
+        }
+    };
+
+  
+useEffect(() => {
+    const getPosts = async () => {
+        try {
+            const response = await fetch(
+                "https://backendblog-1kjf.onrender.com/medium/content/posts/"
+            );
+
+            const data = await response.json();
+
+            console.log("ALL RECOMMENDED POSTS:", data);
+
+            if (response.ok) {
+                setPosts(data.data || []);
+            }
+        } catch (error) {
+            console.error("Error fetching posts:", error);
+        }
+    };
+
+    getPosts();
+}, []);
+
 
     useEffect(() => {
         const getPost = async () => {
@@ -106,49 +251,87 @@ function SinglePost() {
                 console.error("Error fetching authors:", error);
             }
         };
+        
+
+
+        
+
+const getAuthorPosts = async () => {
+    try {
+        const response = await fetch(
+            "https://backendblog-1kjf.onrender.com/medium/content/posts/"
+        );
+
+        const data = await response.json();
+
+        if (response.ok) {
+            const allPosts = data.data || [];
+
+            const currentPost = allPosts.find(
+                (item) => item._id === postId
+            );
+
+            if (currentPost) {
+                const filteredPosts = allPosts.filter(
+                    (item) =>
+                        item.author === currentPost.author &&
+                        item._id !== postId
+                );
+
+                setAuthorPosts(filteredPosts);
+            }
+        }
+    } catch (error) {
+        console.error("Error fetching author's posts:", error);
+    }
+};
+
+
 
         getPost();
-        getAuthors()
+        getAuthors();
+        getAuthorPosts();
+        getPostComments();
     }, [postId]);
 
-     useEffect(() => {
-            const getUser = async () => {
-                try {
-                    const response = await fetch(
-                        `https://backendblog-1kjf.onrender.com/medium/auth/users/${userId}`
-                    );
-    
-                    const data = await response.json();
-    
-                    console.log(data);
-    
-                    if (response.ok) {
-                        setUser(data.data);
-                        setFormData({
-                            first_name: data.data.first_name || "", last_name: data.data.last_name || "", pronoun: data.data.pronoun || "", bio: data.data.bio || ""
-                        });
-                        console.log("FORM DATA:", {
-                            first_name: data.data.first_name || "",
-                            last_name: data.data.last_name || "",
-                            pronoun: data.data.pronoun || "",
-                            bio: data.data.bio || ""
-                        });
-                    }
-                } catch (error) {
-                    console.error("Error fetching user:", error);
+    useEffect(() => {
+        const getUser = async () => {
+            try {
+                const response = await fetch(
+                    `https://backendblog-1kjf.onrender.com/medium/auth/users/${userId}`
+                );
+
+                const data = await response.json();
+
+                console.log(data);
+
+                if (response.ok) {
+                    setUser(data.data);
+                    setFormData({
+                        first_name: data.data.first_name || "", last_name: data.data.last_name || "", pronoun: data.data.pronoun || "", bio: data.data.bio || ""
+                    });
+                    console.log("FORM DATA:", {
+                        first_name: data.data.first_name || "",
+                        last_name: data.data.last_name || "",
+                        pronoun: data.data.pronoun || "",
+                        bio: data.data.bio || ""
+                    });
                 }
-            };
-    
-            getUser();
-    
-    
-        },[userId]);
+            } catch (error) {
+                console.error("Error fetching user:", error);
+            }
+        };
+
+        getUser();
+
+
+    }, [userId]);
     return (
         <div>
             <div className="w-full h-17 bg-white ">
-                <nav className="w-full h-17 border-b border-gray-300 flex fixed bg-white  items-center px-6">
+               <nav className="w-full h-17 border-b border-gray-300 flex fixed bg-white  items-center px-6">
                     <img onClick={() => setSideNavOpen(!sideNavOpen)} src="/menu.png" alt="" className="size-6 cursor-pointer" />
-                    <Link to='/'><h1 className="text-[35px] Medium-font font-bold ml-5">Medium</h1></Link>
+                    <Link to='/landingpage'><h1 className="text-[35px] Medium-font font-bold ml-5">Medium</h1></Link>
 
                     <div className="px-4 w-60 h-10 rounded-3xl bg-gray-50 flex items-center ml-7">
                         <img src="/search.png" alt="" className="size-7" />
@@ -169,7 +352,8 @@ function SinglePost() {
 
                     <img src="/bell.png" alt="" className="size-6 ml-5" />
 
-                    <div className="rounded-[50%] border size-8 ml-5"></div>
+                    {/* <div className="rounded-[50%] border size-8 ml-5"></div> */}
+                    <button onClick={signOut} className="font-bold p-2 shadow-sm ml-1 cursor-pointer hover:bg-gray-50 transition-colors duration-250 text-lg">Sign out</button>
                 </nav>
             </div>
 
@@ -327,8 +511,8 @@ function SinglePost() {
                                             <div className="w-full h-8 flex  justify-between">
                                                 <div className="w-[30%] h-8  flex justify-between items-center ">
                                                     <div className="flex"><img src="/hands-clapping.png" onClick={handleClap} alt="Clap" className="size-5 cursor-pointer mr-1" /> <p onClick={() => setOpenClapModal(true)} className="text-gray-500 text-sm cursor-pointer hover:text-black">{post.claps || 0}</p></div>
-                                                    <div className="flex"><img src="/speech-bubble.png" alt="" className="size-4 cursor-pointer mr-1 mt-0.5" /> <p onClick={() => setOpenCommentModal(true)} className="text-gray-500 text-sm cursor-pointer hover:text-black">105</p></div>
-                                                    <div className="flex"><img src="/exchange.png" alt="" className="size-4 cursor-pointer mt-0.5 mr-1" /> <p className="text-gray-500 text-sm cursor-pointer hover:text-black">238</p></div>
+                                                    <div className="flex"><img src="/speech-bubble.png" alt="" className="size-4 cursor-pointer mr-1 mt-0.5" /> <p onClick={() => setOpenCommentModal(true)} className="text-gray-500 text-sm cursor-pointer hover:text-black">0</p></div>
+                                                    <div className="flex"><img src="/exchange.png" alt="" className="size-4 cursor-pointer mt-0.5 mr-1" /> <p className="text-gray-500 text-sm cursor-pointer hover:text-black">0</p></div>
                                                 </div>
 
                                                 <div className="w-[25%] h-8  flex items-center justify-between ">
@@ -348,11 +532,11 @@ function SinglePost() {
 
 
                         <div className="w-full min-h-20  mt-2">
-                            <div className="w-[80%] h-180 ml-33">
-                                {/* {post?.image?.url && (
-                                    <img src={post.image.url} alt={post.title} className="w-full max-h-[450px] object-cover rounded-lg mb-8" />
-                                )} */}
-                                <img src="https://images.unsplash.com/photo-1678134017317-4edd53da833d?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTR8fHNlYSUyMHNpdGV8ZW58MHx8MHx8fDA%3D" className="w-full h-full object-cover rounded-lg mb-8" alt="" />
+                            <div className="w-[80%] h-180  ml-33">
+                                {post?.image?.url && (
+                                    <img src={post.image.url} alt={post.title} className="w-full h-full object-cover  rounded-lg mb-8" />
+                                )}
+                                {/* <img src="https://images.unsplash.com/photo-1678134017317-4edd53da833d?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTR8fHNlYSUyMHNpdGV8ZW58MHx8MHx8fDA%3D" className="w-full h-full object-cover rounded-lg mb-8" alt="" /> */}
                             </div>
 
                             <div className="w-full min-h-50 flex justify-center">
@@ -367,8 +551,8 @@ function SinglePost() {
                                     <div className="w-full h-8 flex  justify-between">
                                         <div className="w-[30%] h-8  flex justify-between items-center ">
                                             <div onClick={handleClap} className="flex"><img src="/hands-clapping.png" alt="" className="size-5 cursor-pointer mr-1" /> <p className="text-gray-900 text-sm">{post?.claps || 0}</p></div>
-                                            <div className="flex"><img src="/speech-bubble.png" alt="" className="size-4 cursor-pointer mr-1 mt-0.5" /> <p className="text-gray-900 text-sm">105</p></div>
-                                            <div className="flex"><img src="/exchange.png" alt="" className="size-4 cursor-pointer mt-0.5 mr-1" /> <p className="text-gray-900 text-sm">238</p></div>
+                                            <div className="flex"><img src="/speech-bubble.png" alt="" className="size-4 cursor-pointer mr-1 mt-0.5" /> <p className="text-gray-900 text-sm">0</p></div>
+                                            <div className="flex"><img src="/exchange.png" alt="" className="size-4 cursor-pointer mt-0.5 mr-1" /> <p className="text-gray-900 text-sm">0</p></div>
                                         </div>
 
                                         <div className="w-[25%] h-8  flex items-center justify-between ">
@@ -392,10 +576,10 @@ function SinglePost() {
                                 </div>
 
                                 <p className="text-2xl font-bold text-center mt-2">{authors[post?.author]
-                                                ? `${authors[post?.author].first_name || ""} ${authors[post.author].last_name || ""}`.trim()
-                                                || authors[post.author].name
-                                                || authors[post.author].email
-                                                : "Author"}</p>
+                                    ? `${authors[post?.author].first_name || ""} ${authors[post.author].last_name || ""}`.trim()
+                                    || authors[post.author].name
+                                    || authors[post.author].email
+                                    : "Author"}</p>
 
 
                                 <div className="w-full min-h-10 justify-center flex mt-3">
@@ -421,7 +605,7 @@ function SinglePost() {
                         <div className="w-full min-h-10 border-t border-gray-300 mt-15 flex justify-center">
                             <div className="w-[50%] min-h-10 ">
                                 <div className="w-full h-10 flex justify-between items-center">
-                                    <p className="text-3xl font-semibold">Responses (<span>292</span>)</p>
+                                    <p className="text-3xl font-semibold">Responses (<span>0</span>)</p>
                                     <img src="/insurance.png" alt="" className="size-5" />
                                 </div>
 
@@ -432,7 +616,7 @@ function SinglePost() {
 
 
                                 <div className="w-full min-h-30 outline-none mt-3 rounded-md bg-gray-200 px-5 mb-10 py-2">
-                                    <textarea name="" id="" placeholder="What are your thoughts?" className="w-full h-20 outline-none rounded-md bg-gray-200 px-5 "></textarea>
+                                    <textarea value={commentText} onChange={(e) => setCommentText(e.target.value)} placeholder="What are your thoughts?" className="w-full h-20 py-2 outline-none rounded-md bg-gray-200 px-5 "></textarea>
 
                                     <div className="flex justify-between w-full h-10">
                                         <div className="w-25 h-10 justify-between flex  items-center">
@@ -443,31 +627,63 @@ function SinglePost() {
 
                                         <div className="flex">
                                             <button className="rounded-3xl w-20 min-h-9 cursor-pointer mr-3 p-1">Cancel</button>
-                                            <button className="rounded-3xl w-20 min-h-9 cursor-pointer bg-black text-white p-1">Resposnd</button>
+                                            <button onClick={handleComment} className="rounded-3xl w-20 min-h-9 cursor-pointer bg-black text-white p-1">Resposnd</button>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="w-full min-h-30 border-t border-b border-gray-400 py-4">
-                                    <div className="flex w-full h-10 items-center">
-                                        <div className="size-10 rounded-[50%] border"></div>
-                                        <div className="w-[89%] h-10 ml-2">
-                                            <div><p>Lost Factal</p></div>
-                                            <div><p className="text-gray-500">Aug 7</p></div>
+
+                                {comments.map((comment) => (
+                                    <div key={comment._id} className="w-full min-h-30 border-t border-b border-gray-400 py-4">
+                                        <div className="flex w-full h-10 items-center">
+                                            <div className="size-10 rounded-[50%] border"></div>
+                                            <div className="w-[89%] h-10 ml-2">
+                                                <div><p>{comment.user?.first_name ? `${comment.user.first_name} ${comment.user.last_name || ""}`.trim() : "User"}</p></div>
+                                                <div><p className="text-gray-500">{comment.createdAt ? new Date(comment.createdAt).toLocaleDateString() : ""}</p></div>
+                                            </div>
+                                            <img src="/menu-dots.png" alt="" className="size-8 cursor-pointer" />
                                         </div>
-                                        <img src="/menu-dots.png" alt="" className="size-8 cursor-pointer" />
+
+                                        <p className="mt-5">{comment.content}</p>
+                                        {/* target */}
+                                        <div className="w-55 h-10  mt-5">
+                                            <div className="w-full h-8  flex justify-between items-center ">
+                                                <div onClick={handleClap} className="flex"><img src="/hands-clapping.png" alt="" className="size-5 cursor-pointer mr-1" /> <p className="text-gray-900 text-sm">{post?.claps || 0}</p></div>
+                                                <div className="flex"><img src="/speech-bubble.png" alt="" className="size-4 cursor-pointer mr-1 mt-0.5" /> <p className="text-gray-900 text-sm">0 replies</p></div>
+                                                <div className="flex">  <button onClick={() => { setReplyingTo(replyingTo === comment._id ? null : comment._id); setReplyText(""); }} className="cursor-pointer text-sm font-semibold text-gray-600 hover:text-black">
+                                                    Reply
+                                                </button>
+
+                                                </div>
+
+                                            </div>
+
+                                        </div>
+
+                                        {/* {replyingTo === comment._id && (
+
+
+                                            <div className="w-full min-h-30 outline-none mt-3 rounded-md bg-gray-100 px-5 mb-10 py-2">
+                                                <textarea value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder="Write a reply..." rows={3} className="w-full h-20 outline-none py-2 rounded-md bg-gray-100 px-5 "></textarea>
+
+                                                <div className="flex justify-between w-full h-10">
+                                                    <div className="w-25 h-10 justify-between flex  items-center">
+                                                        <img src="/bold-text-option.png" alt="" className="size-5 cursor-pointer" />
+                                                        <img src="/italic.png" alt="" className="size-5 cursor-pointer" />
+                                                        <img src="/link.png" alt="" className="size-5 cursor-pointer" />
+                                                    </div>
+
+                                                    <div className="flex">
+                                                        <button className="rounded-3xl w-20 min-h-9 cursor-pointer mr-3 p-1">Cancel</button>
+                                                        <button onClick={() => handleReply(comment._id)} className="rounded-3xl w-20 min-h-9 cursor-pointer bg-black text-white p-1">Resposnd</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                        )} */}
                                     </div>
 
-                                    <p className="mt-5">It is also an infringement on your right to self-expression. Disagreeing with you is their right, but stalking and trying to intimidate you is not.</p>
-
-                                    <div className="w-55 h-10  mt-5">
-                                        <div className="w-full h-8  flex justify-between items-center ">
-                                            <div className="flex"><img src="/hands-clapping.png" alt="" className="size-5 cursor-pointer mr-1" /> <p className="text-gray-900 text-sm">3.3K</p></div>
-                                            <div className="flex"><img src="/speech-bubble.png" alt="" className="size-4 cursor-pointer mr-1 mt-0.5" /> <p className="text-gray-900 text-sm">105 replies</p></div>
-                                            <div className="flex"> <p className="text-gray-900 text-sm underline cursor-pointer">Reply</p></div>
-                                        </div>
-                                    </div>
-                                </div>
+                                ))}
 
 
 
@@ -481,39 +697,68 @@ function SinglePost() {
                         <div className="w-full min-h-10 mt-15 flex justify-center">
                             <div className="w-[50%] min-h-10">
                                 <p className="text-[25px] font-semibold mb-8">More from <span>{authors[post?.author]
-                                                ? `${authors[post?.author].first_name || ""} ${authors[post.author].last_name || ""}`.trim()
-                                                || authors[post.author].name
-                                                || authors[post.author].email
-                                                : "Author"}</span></p>
+                                    ? `${authors[post?.author].first_name || ""} ${authors[post.author].last_name || ""}`.trim()
+                                    || authors[post.author].name
+                                    || authors[post.author].email
+                                    : "Author"}</span></p>
 
-                                <div className="w-full min-h-20 grid grid-cols-2 gap-10">
-                                    <Link to='/singlepost'>
-                                        <div className="border min-h-70 mb-7">
-                                            <div className="w-full h-45 border-b">image div</div>
-                                            <div className="w-full min-h-7 flex  py-5 flex items-center">
-                                                <div className="rounded-full size-8 border"></div>
-                                                <p className="ml-2 text-sm">Y.L Wolfe</p>
-                                                <p className="text-sm text-gray-500 ml-2">Jun 5</p>
-                                            </div>
-                                            <p className="text-xl font-bold">Why it's Okay for Men to Want a Skinny Woman ...</p>
-                                            <p className="text-md text-gray-700 pt-2">...but not okay for a woman to want a tall man</p>
-                                            <div className="full h-8 flex  justify-between mt-10">
-                                                <div className="w-[60%] h-8  flex justify-between items-center">
-                                                    <img src="/star.png" alt="" className="size-4" />
-                                                    <div className="flex"><img src="/wave-hand.png" alt="" className="cursor-pointer size-5 mr-1" /> <p className="text-gray-900 text-sm">3.3K</p></div>
-                                                    <div className="flex"><img src="/speech-bubble.png" alt="" className="cursor-pointer size-4 mr-1 mt-0.5" /> <p className="text-gray-900 text-sm">105</p></div>
-                                                    <div className="flex"><img src="/exchange.png" alt="" className="cursor-pointer size-4 mt-0.5 mr-1" /> <p className="text-gray-900 text-sm">238</p></div>
-                                                </div>
 
-                                                <div className="w-[22%] h-8 flex items-center justify-between">
-                                                    <img src="/dislike.png" alt="" className="cursor-pointer size-6 mr-1 mt-0.5" />
-                                                    <img src="/menu-dots.png" alt="" className="cursor-pointer size-6 mr-1 mt-0.5" />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </Link>
+                               
+<div className="w-full min-h-20 grid grid-cols-2 gap-10">
+    {authorPosts.map((authorPost) => (
+        <Link
+            to={`/singlepost/${authorPost._id}`}
+            key={authorPost._id}
+        >
+            <div className="min-h-70 mb-7 cursor-pointer">
+                {authorPost.image?.url && (
+                    <img
+                        src={authorPost.image.url}
+                        alt={authorPost.title || ""}
+                        className="w-full h-45 object-cover rounded-md"
+                    />
+                )}
 
-                                </div>
+                <div className="w-full min-h-7 flex py-5 items-center">
+                    <div className="rounded-full size-8 border"></div>
+
+                    <p className="ml-2 text-sm">
+                        {authors[authorPost.author]
+                            ? `${authors[authorPost.author].first_name || ""} ${authors[authorPost.author].last_name || ""}`.trim()
+                            : "Author"}
+                    </p>
+
+                    <p className="text-sm text-gray-500 ml-2">
+                        {authorPost.createdAt
+                            ? new Date(authorPost.createdAt).toLocaleDateString(
+                                "en-US",
+                                { month: "short", day: "numeric" }
+                            )
+                            : ""}
+                    </p>
+                </div>
+
+                <p className="text-xl font-bold">
+                    {authorPost.title}
+                </p>
+
+                <p className="text-md text-gray-700 pt-2 line-clamp-2">
+                    {authorPost.content}
+                </p>
+
+                <div className="h-8 flex justify-between mt-5">
+                    <div className="flex items-center">
+                        <img src="/hands-clapping.png" alt="" className="size-5 mr-1"/>
+                        <p className="text-sm">{authorPost.claps || 0}</p>
+                    </div>
+
+                    <img src="/menu-dots.png" alt="" className="size-6" />
+                </div>
+            </div>
+        </Link>
+    ))}
+</div>
+
 
                                 <button className="min-w-40 h-10 rounded-3xl border mt-10 px-4 cursor-pointer py-2">See all from Y.L Wolfe</button>
 
@@ -521,22 +766,37 @@ function SinglePost() {
                         </div>
 
 
-                        <div className="w-full min-h-10 border-t border-gray-300 mt-30 flex justify-center">
-                            <div className="w-[50%] min-h-10 border-b border-gray-300">
+                        <div className="w-full min-h-10  border-t border-gray-300 mt-30 flex justify-center">
+                            <div className="w-[50%]  min-h-10 border-b border-gray-300">
                                 <p className="text-[25px] font-semibold my-10">Recommended from Medium</p>
+{/* target  */}
+                                <div className="w-full  min-h-20 grid grid-cols-2 gap-10">
+                                   
+                                       {posts.map((post)=>(
+                                             <div key={post._id} to={`/singlepost/${post._id}`} className="shadow-md pb-3 min-h-70 mb-7">
+                                            <div className="w-full h-45 border-gray-300 border-b"><img src={post.image.url} alt='' className="w-full h-full object-cover"/></div>
+                                            <div className="w-full min-h-7 flex px-2  py-5 flex items-center">
+                                                <div className="rounded-full  size-8 border"></div>
+                                                <p className="ml-2 text-sm">                {(() => {
+                                                            const author = authors[post.author];
 
-                                <div className="w-full min-h-20 grid grid-cols-2 gap-10">
-                                    <Link to='/singlepost'>
-                                        <div className="border min-h-70 mb-7">
-                                            <div className="w-full h-45 border-b">image div</div>
-                                            <div className="w-full min-h-7 flex  py-5 flex items-center">
-                                                <div className="rounded-full size-8 border"></div>
-                                                <p className="ml-2 text-sm">Y.L Wolfe</p>
-                                                <p className="text-sm text-gray-500 ml-2">Jun 5</p>
+                                                            if (!author) return "Loading author...";
+
+                                                            return `${author.first_name || ""} ${author.last_name || ""}`.trim()
+                                                                || author.name
+                                                                || author.email
+                                                                || "Unknown author";
+                                                        })()}</p>
+                                                <p className="text-sm text-gray-500 ml-2">{post.createdAt
+                                                        ? new Date(post.createdAt).toLocaleDateString("en-US", {
+                                                            month: "short",
+                                                            day: "numeric",
+                                                        })
+                                                        : ""}</p>
                                             </div>
-                                            <p className="text-xl font-bold">Why it's Okay for Men to Want a Skinny Woman ...</p>
-                                            <p className="text-md text-gray-700 pt-2">...but not okay for a woman to want a tall man</p>
-                                            <div className="full h-8 flex  justify-between mt-10">
+                                            <p className="text-xl font-bold px-2">{post.title}</p>
+                                            <p className="text-md text-gray-700 pt-2 line-clamp-3 overflow-hidden px-2">{post.content}</p>
+                                            <div className="full h-8 flex  justify-between mt-10 px-2">
                                                 <div className="w-[60%] h-8  flex justify-between items-center">
                                                     <img src="/star.png" alt="" className="size-4" />
                                                     <div className="flex"><img src="/wave-hand.png" alt="" className="cursor-pointer size-5 mr-1" /> <p className="text-gray-900 text-sm">3.3K</p></div>
@@ -550,7 +810,8 @@ function SinglePost() {
                                                 </div>
                                             </div>
                                         </div>
-                                    </Link>
+                                       ))}
+                                    
 
                                 </div>
 
@@ -646,7 +907,7 @@ function SinglePost() {
                         </div>
 
                         <div className="w-full min-h-30 outline-none mt-3 rounded-md bg-gray-200 px-5 mb-10 mt-5 py-4">
-                            <textarea name="" id="" placeholder="What are your thoughts?" className="w-full h-20 outline-none rounded-md bg-gray-200 px-3 "></textarea>
+                            <textarea value={commentText} onChange={(e) => setCommentText(e.target.value)} placeholder="What are your thoughts?" className="w-full h-20 outline-none rounded-md bg-gray-200 px-3 "></textarea>
 
                             <div className="flex justify-between w-full h-10">
                                 <div className="w-25 h-10 justify-between flex  items-center">
@@ -657,7 +918,7 @@ function SinglePost() {
 
                                 <div className="flex">
                                     <button className="rounded-3xl w-20 min-h-9 cursor-pointer mr-3 p-1">Cancel</button>
-                                    <button className="rounded-3xl min-w-20 min-h-9 cursor-pointer bg-gray-300 text-white p-2">Respond</button>
+                                    <button onClick={handleComment} className="rounded-3xl min-w-20 min-h-9 cursor-pointer bg-gray-300 text-white p-2">Respond</button>
                                 </div>
                             </div>
                         </div>
@@ -667,26 +928,31 @@ function SinglePost() {
                             <img src="/down-arrow.png" alt="" className="size-4 mt-1 ml-3" />
                         </div>
 
-                        <div className="w-full min-h-30 border-t border-b border-gray-300 py-4 mt-10">
-                            <div className="flex w-full h-10 items-center">
-                                <div className="size-10 rounded-[50%] border"></div>
-                                <div className="w-[89%] h-10 ml-2">
-                                    <div><p>Lost Factal</p></div>
-                                    <div><p className="text-gray-500">Aug 7</p></div>
-                                </div>
-                                <img src="/menu-dots.png" alt="" className="size-8 cursor-pointer" />
-                            </div>
 
-                            <p className="mt-5">It is also an infringement on your right to self-expression. Disagreeing with you is their right, but stalking and trying to intimidate you is not.</p>
+                        {comments.map((comment) => (
+                            <div key={comment._id} className="w-full min-h-30 border-t border-b border-gray-300 py-4 mt-5" >
+                                <div className="flex w-full min-h-10 items-center">
+                                    <div className="size-10 rounded-full border"></div>
 
-                            <div className="w-55 h-10  mt-5">
-                                <div className="w-full h-8  flex justify-between items-center ">
-                                    <div className="flex"><img src="/hands-clapping.png" alt="" className="size-5 cursor-pointer mr-1" /> <p className="text-gray-900 text-sm">3.3K</p></div>
-                                    <div className="flex"><img src="/speech-bubble.png" alt="" className="size-4 cursor-pointer mr-1 mt-0.5" /> <p className="text-gray-900 text-sm">105 replies</p></div>
-                                    <div className="flex"> <p className="text-gray-900 text-sm underline cursor-pointer">Reply</p></div>
+                                    <div className="ml-2 flex-1">
+                                        <p className="font-semibold">
+                                            {comment.user?.first_name ? `${comment.user.first_name} ${comment.user.last_name || ""}`.trim() : "User"}
+                                        </p>
+
+                                        <p className="text-gray-500 text-sm">
+                                            {comment.createdAt ? new Date(comment.createdAt).toLocaleDateString() : ""}
+                                        </p>
+                                    </div>
+
+                                    <img src="/menu-dots.png" alt="Options" className="size-6 cursor-pointer" />
                                 </div>
+
+                                <p className="mt-5 whitespace-pre-wrap">
+                                    {comment.content}
+                                </p>
                             </div>
-                        </div>
+                        ))}
+
                     </div>
                 </div>
             )}

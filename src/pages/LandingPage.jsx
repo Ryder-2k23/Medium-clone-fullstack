@@ -1,13 +1,20 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState, useRef, useEffect } from "react";
 function LandingPage() {
     const [activeNav, setActiveNav] = useState(0);
     const [sideNavOpen, setSideNavOpen] = useState(true);
+   
 
     const [posts, setPosts] = useState([]);
     const [authors, setAuthors] = useState({});
 
+ const navigate = useNavigate();
+    const signOut = async ()=>{
+        localStorage.removeItem("accessToken");
+localStorage.removeItem("userId");
 
+navigate("/");
+    }
 
     useEffect(() => {
         const getPosts = async () => {
@@ -105,7 +112,8 @@ function LandingPage() {
 
                     <img src="/bell.png" alt="" className="size-6 ml-5" />
 
-                    <div className="rounded-[50%] border size-8 ml-5"></div>
+                    {/* <div className="rounded-[50%] border size-8 ml-5"></div> */}
+                    <button onClick={signOut} className="font-bold p-2 shadow-sm ml-1 cursor-pointer hover:bg-gray-50 transition-colors duration-250 text-lg">Sign out</button>
                 </nav>
             </div>
 
@@ -214,7 +222,7 @@ function LandingPage() {
 
                                                 <div>
                                                     <h1 className="my-5 post-heading">{post.title}</h1>
-                                                    <p className="mb-5 text-gray-500 text-lg post-sub">{post.content}</p>
+                                                    <p className="mb-5 text-gray-500 line-clamp-3 overflow-hidden text-lg post-sub">{post.content}</p>
                                                 </div>
 
                                                 <div className="w-[90%] h-8 flex  justify-between">
@@ -233,17 +241,8 @@ function LandingPage() {
                                                 </div>
                                             </div>
 
-                                            <div className="w-[25%] h-35 border mt-10 flex items-center justify-center overflow-hidden">
-                                                {/* {post.image?.url ? (
-                                                    <img
-                                                        src={post.image.url}
-                                                        alt={post.title}
-                                                        className="w-full h-full object-cover"
-                                                    />
-                                                ) : (
-                                                    <p className="text-gray-400 text-sm">No image</p>
-                                                )} */}
-                                                <img src="https://images.unsplash.com/photo-1678134017317-4edd53da833d?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTR8fHNlYSUyMHNpdGV8ZW58MHx8MHx8fDA%3D" className="w-full h-full object-cover" alt="" />
+                                            <div className="w-[25%] h-35  mt-10 flex items-center justify-center overflow-hidden">
+                                               <img src={post.image.url} alt='' className="w-full h-full object-cover"/>
                                             </div>
                                         </div>
                                         </Link>

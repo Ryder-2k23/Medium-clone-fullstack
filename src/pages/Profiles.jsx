@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState, useRef, useEffect } from "react";
 
 
@@ -9,23 +9,43 @@ function Profiles() {
     const [user, setUser] = useState(null);
     const [posts, setPosts] = useState([]);
 
+const [avatarFile, setAvatarFile] = useState(null);
+const [avatarPreview, setAvatarPreview] = useState("");
+const fileInputRef = useRef(null);
+
     const [formData, setFormData] = useState({ first_name: "", last_name: "", pronoun: "", bio: "" });
 
     const userId = localStorage.getItem("userId");
 
+const navigate = useNavigate();
+    const signOut = async ()=>{
+        localStorage.removeItem("accessToken");
+localStorage.removeItem("userId");
 
+navigate("/");
+    }
 
 const handleUpdate = async () => {
     try {
+        const formDataToSend = new FormData();
+
+        formDataToSend.append("first_name", formData.first_name);
+        formDataToSend.append("last_name", formData.last_name);
+        formDataToSend.append("pronoun", formData.pronoun);
+        formDataToSend.append("bio", formData.bio);
+
+        if (avatarFile) {
+            formDataToSend.append("avatar", avatarFile);
+        }
+
         const response = await fetch(
-            `https://backendblog-1kjf.onrender.com/medium/auth/users/${userId}`,
+            `https://backendblog-1kjf.onrender.com/medium/auth/update/${userId}`,
             {
                 method: "PUT",
                 headers: {
-                    "Content-Type": "application/json",
                     Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
                 },
-                body: JSON.stringify(formData),
+                body: formDataToSend,
             }
         );
 
@@ -111,7 +131,7 @@ const handleUpdate = async () => {
     return (
         <div>
             <div className="w-full h-17 bg-white ">
-                <nav className="w-full h-17 border-b border-gray-300 flex fixed bg-white  items-center px-6">
+             <nav className="w-full h-17 border-b border-gray-300 flex fixed bg-white  items-center px-6">
                     <img onClick={() => setSideNavOpen(!sideNavOpen)} src="/menu.png" alt="" className="size-6 cursor-pointer" />
                     <Link to='/landingpage'><h1 className="text-[35px] Medium-font font-bold ml-5">Medium</h1></Link>
 
@@ -134,7 +154,8 @@ const handleUpdate = async () => {
 
                     <img src="/bell.png" alt="" className="size-6 ml-5" />
 
-                    <div className="rounded-[50%] border size-8 ml-5"></div>
+                    {/* <div className="rounded-[50%] border size-8 ml-5"></div> */}
+                    <button onClick={signOut} className="font-bold p-2 shadow-sm ml-1 cursor-pointer hover:bg-gray-50 transition-colors duration-250 text-lg">Sign out</button>
                 </nav>
             </div>
 
@@ -224,10 +245,11 @@ const handleUpdate = async () => {
                                
                                 {posts.length > 0 ? (
                                     posts.map((post) => (
-                                        <div key={post._id} className="w-full min-h-20 border-gray-200 border-t flex justify-between border-b py-10">
+                                       <Link to={`/singlepost/${post._id}`}>
+                                                 <div key={post._id} className="w-full min-h-20 border-gray-200 border-t flex justify-between border-b py-10">
                                             <div className="w-[65%] h-full">
                                                 <div className="flex">
-                                                    <div className="size-7 rounded-full border border-gray-500 mr-2"></div>
+                                                    <img src={user?.avatar || "/default-profile.png"} alt="" className="size-7 mr-2 rounded-full  object-cover"/>
 
                                                     <p className="text-sm mt-1">{user ? `${user.first_name} ${user.last_name}` : "Loading..."}
                                                     </p>
@@ -246,10 +268,11 @@ const handleUpdate = async () => {
                                                 </div>
                                             </div>
 
-                                            <div className="w-[25%] min-h-35 border mt-10">
+                                            <div className="w-[25%] min-h-35  mt-10">
                                                 {post.image?.url && (<img src={post.image.url} alt={post.title} className="w-full h-full object-cover" />)}
                                             </div>
                                         </div>
+                                       </Link>
                                     ))
                                 ) : (
                                     <p className="text-gray-500 mt-10">You haven't published any stories yet.</p>
@@ -260,7 +283,9 @@ const handleUpdate = async () => {
                         </div>
 
                         <div className="w-[20%] h-fit  py-5 p-10 sticky top-20 self-start">
-                            <div className="rounded-[50%] border size-25"></div>
+                            
+                        <img src={user?.avatar || "/default-profile.png"} alt="" className="size-25 rounded-full  object-cover"/>
+
 
                             <p className="font-semibold text-xl mt-5"> {user ? `${user.first_name} ${user.last_name}` : "Loading..."}</p>
 
@@ -282,9 +307,29 @@ const handleUpdate = async () => {
                             <p className="text-md">Photo</p>
 
                             <div className="full min-h-10  flex">
-                                <div className="rounded-[50%] border h-23 w-25"></div>
-                                <div>
-                                    <div className="flex text-md"><p className="mr-3 text-green-700 cursor-pointer ml-2">Update</p> <p className="text-red-700 cursor-pointer">Remove</p></div>
+                                    <img src={avatarPreview || user?.avatar || "/default-profile.png"} alt="Profile preview" className="size-18 mr-2 rounded-full object-cover"/>    
+                            <div>
+                                    
+<div className="flex text-md">
+    <p onClick={() => fileInputRef.current.click()} className="mr-3 text-green-700 cursor-pointer ml-2"> Update </p>
+
+    <p onClick={() => {
+            setAvatarFile(null);
+            setAvatarPreview("");
+        }}
+        className="text-red-700 cursor-pointer">
+        Remove
+    </p>
+
+    <input type="file" accept="image/*" hidden ref={fileInputRef} onChange={(e) => {
+            const file = e.target.files[0];
+            if (file) {
+                setAvatarFile(file);
+                setAvatarPreview(URL.createObjectURL(file));
+            }
+        }}/>
+</div>
+
                                     <div className="pl-2"><p className="text-[14px] text-gray-500 mt-5">Recommended: Square JPG, PNG, or GIF, at least 1,000 pixels per side.</p></div>
                                 </div>
 
