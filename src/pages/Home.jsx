@@ -72,7 +72,11 @@ const navigate = useNavigate();
                 
                 localStorage.setItem("accessToken", data.data.accessToken);
                 localStorage.setItem("userId", data.data.user.id);
-                navigate("/landingpage");
+                if (data.data.user.role === "admin") {
+    navigate("/adminlog");
+} else {
+    navigate("/landingpage");
+}
             } else {
                 alert(data.message || "Login failed.");
             }

@@ -4,7 +4,8 @@ import{BrowserRouter, Routes, Route} from "react-router-dom"
 
 
 import './App.css'
-import Nav from './components/Nav'
+import Nav from './components/Nav';
+import sideNav from './components/sideNav';
 
 import Home from "./pages/Home";
 import LandingPage from "./pages/LandingPage"
@@ -12,6 +13,9 @@ import  Profiles  from './pages/Profiles';
 import SinglePost from './pages/SinglePost';
 import Write from './pages/Write';
 import AdminLog from './pages/AdminLog';
+import AdminUserLog from './pages/AdminUserLog';
+import AdminProfile from './pages/AdminProfile';
+
 
 
 function App() {
@@ -26,6 +30,8 @@ function App() {
          <Route path ='/write' element = {<Write/>}/>
 
          <Route path='/adminlog' element = {<AdminLog/>}/>
+         <Route path='/adminuserlog' element = {<AdminUserLog/>}/>
+         <Route path='/adminprofile' element = {<AdminProfile/>}/>
          
           <Route path="*" element={<NotFound />} />
       </Routes>
